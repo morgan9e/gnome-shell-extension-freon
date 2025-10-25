@@ -24,6 +24,7 @@ import HddtempUtil from './hddtempUtil.js';
 import SmartctlUtil from './smartctlUtil.js';
 import NvmecliUtil from './nvmecliUtil.js';
 import BatteryUtil from './batteryUtil.js';
+import WattdUtil from './wattdUtil.js';
 
 import FreonItem from './freonItem.js';
 
@@ -78,6 +79,7 @@ class FreonMenuButton extends PanelMenu.Button {
         this._initFreeipmiUtility();
         this._initLiquidctlUtility();
         this._initBatteryUtility();
+        this._initWattdUtility();
 
         this._initNvidiaUtility();
         this._initBumblebeeNvidiaUtility();
@@ -142,6 +144,7 @@ class FreonMenuButton extends PanelMenu.Button {
         this._addSettingChangedSignal('use-generic-lmsensors', this._sensorsUtilityChanged.bind(this));
         this._addSettingChangedSignal('freeimpi-selected', this._freeipmiUtilityChanged.bind(this));
         this._addSettingChangedSignal('use-generic-liquidctl', this._liquidctlUtilityChanged.bind(this));
+        this._addSettingChangedSignal('use-generic-wattd', this._wattdUtilityChanged.bind(this));
         this._addSettingChangedSignal('show-battery-stats', this._batteryUtilityChanged.bind(this));
 
         this._addSettingChangedSignal('use-gpu-nvidia', this._nvidiaUtilityChanged.bind(this));
@@ -364,6 +367,25 @@ class FreonMenuButton extends PanelMenu.Button {
         this._updateUI(true);
     }
 
+    _initWattdUtility() {
+        if (this._settings.get_boolean('use-generic-wattd'))
+            this._utils.wattd = new WattdUtil();
+    }
+
+    _destroyWattdUtility() {
+        if (this._utils.wattd) {
+            this._utils.wattd.destroy();
+            delete this._utils.wattd;
+        }
+    }
+
+    _wattdUtilityChanged() {
+        this._destroyWattdUtility();
+        this._initWattdUtility();
+        this._querySensors();
+        this._updateUI(true);
+    }
+
     _initNvidiaUtility() {
         if (this._settings.get_boolean('use-gpu-nvidia'))
             this._utils.nvidia = new NvidiaUtil();
@@ -531,6 +553,7 @@ class FreonMenuButton extends PanelMenu.Button {
         this._destroyNvmecliUtility();
 
         this._destroyBatteryUtility();
+        this._destroyWattdUtility();
 
         GLib.Source.remove(this._timeoutId);
         GLib.Source.remove(this._updateUITimeoutId);
@@ -639,6 +662,10 @@ class FreonMenuButton extends PanelMenu.Button {
                 powerInfo = powerInfo.concat(this._utils.battery.power)
             }
         }
+
+        if (this._utils.wattd && this._utils.wattd.available)
+            if (this._settings.get_boolean('show-power'))
+                powerInfo = powerInfo.concat(this._utils.wattd.power);
 
         if (this._utils.nvidia && this._utils.nvidia.available)
             if (this._settings.get_boolean('show-temperature'))

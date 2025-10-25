@@ -105,6 +105,12 @@
       <description>Read sensors from (requires liquidctl v1.7.0 or later)</description>
     </key>
 
+    <key type="b" name="use-generic-wattd">
+      <default>false</default>
+      <summary>Read power data from wattd</summary>
+      <description>Read power sensors exposed by wattd</description>
+    </key>
+
     <key type="b" name="use-gpu-nvidia">
       <default>false</default>
       <summary>Read GPU sensors from NVIDIA driver</summary>

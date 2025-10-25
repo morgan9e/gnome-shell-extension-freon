@@ -112,6 +112,7 @@ export default class FreonPreferences extends ExtensionPreferences {
 
         group.add(this._addSwitch("lm-sensors", "use-generic-lmsensors", "Read sensors from lm-sensors"));
         group.add(this._addSwitch("liquidctl", "use-generic-liquidctl", "Read sensors from liquidctl (v1.7.0+)"));
+        group.add(this._addSwitch("wattd", "use-generic-wattd", "Read power data from wattd"));
 
         const freeimpi = new Adw.ComboRow({
             title: _('FreeIMPI'),
