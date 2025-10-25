@@ -112,7 +112,25 @@ export default class FreonPreferences extends ExtensionPreferences {
 
         group.add(this._addSwitch("lm-sensors", "use-generic-lmsensors", "Read sensors from lm-sensors"));
         group.add(this._addSwitch("liquidctl", "use-generic-liquidctl", "Read sensors from liquidctl (v1.7.0+)"));
-        group.add(this._addSwitch("wattd", "use-generic-wattd", "Read power data from wattd"));
+        const wattdSwitch = this._addSwitch("wattd", "use-generic-wattd", "Read power data from wattd");
+        group.add(wattdSwitch);
+
+        const wattdInterval = new Adw.SpinRow({
+            title: _('Wattd Polling Interval'),
+            subtitle: _('Seconds between wattd updates'),
+            adjustment: new Gtk.Adjustment({
+                lower: 1,
+                upper: 300,
+                value: this._settings.get_int('wattd-update-time'),
+                step_increment: 1,
+            }),
+        });
+        this._settings.bind('wattd-update-time', wattdInterval, 'value', Gio.SettingsBindFlags.DEFAULT);
+        wattdInterval.sensitive = this._settings.get_boolean('use-generic-wattd');
+        this._settings.connect('changed::use-generic-wattd', () => {
+            wattdInterval.sensitive = this._settings.get_boolean('use-generic-wattd');
+        });
+        group.add(wattdInterval);
 
         const freeimpi = new Adw.ComboRow({
             title: _('FreeIMPI'),

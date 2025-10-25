@@ -129,6 +129,7 @@ class FreonMenuButton extends PanelMenu.Button {
         this._addSettingChangedSignal('hot-sensors', this._querySensors.bind(this));
 
         this._addSettingChangedSignal('update-time', this._updateTimeChanged.bind(this));
+        this._addSettingChangedSignal('wattd-update-time', this._wattdUpdateTimeChanged.bind(this));
         this._addSettingChangedSignal('position-in-panel', this._positionInPanelChanged.bind(this));
         this._addSettingChangedSignal('panel-box-index', this._positionInPanelChanged.bind(this));
         this._addSettingChangedSignal('show-icon-on-panel', this._showIconOnPanelChanged.bind(this));
@@ -369,7 +370,7 @@ class FreonMenuButton extends PanelMenu.Button {
 
     _initWattdUtility() {
         if (this._settings.get_boolean('use-generic-wattd'))
-            this._utils.wattd = new WattdUtil();
+            this._utils.wattd = new WattdUtil(this._settings.get_int('wattd-update-time'));
     }
 
     _destroyWattdUtility() {
@@ -384,6 +385,12 @@ class FreonMenuButton extends PanelMenu.Button {
         this._initWattdUtility();
         this._querySensors();
         this._updateUI(true);
+    }
+
+    _wattdUpdateTimeChanged() {
+        if (this._utils.wattd)
+            this._utils.wattd.interval = this._settings.get_int('wattd-update-time');
+        this._querySensors();
     }
 
     _initNvidiaUtility() {
@@ -837,8 +844,8 @@ class FreonMenuButton extends PanelMenu.Button {
                     icon: _icon,
                     type: 'power',
                     label: power.label,
-                    value: _("%s%.2f%s").format(((power.power >= 0) ? '+' : ''),
-                    power.power, unit)});
+                    value: _("%.2f%s").format(power.power, unit)
+                });
             }
 
             this._fixNames(sensors);

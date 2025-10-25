@@ -3,11 +3,14 @@ import GLib from 'gi://GLib';
 
 export default class WattdUtil {
 
-    constructor() {
+    constructor(intervalSeconds = 5) {
         this._powerDir = '/run/power';
         this._readings = [];
         this._updated = false;
         this._available = GLib.file_test(this._powerDir, GLib.FileTest.IS_DIR);
+        this._intervalUsec = 0;
+        this._lastUpdateUsec = 0;
+        this.interval = intervalSeconds;
     }
 
     get available() {
@@ -23,6 +26,14 @@ export default class WattdUtil {
     }
 
     execute(callback) {
+        const nowUsec = GLib.get_monotonic_time();
+        const remaining = this._intervalUsec - (nowUsec - this._lastUpdateUsec);
+        if (this._intervalUsec > 0 && this._lastUpdateUsec !== 0 && remaining > 0) {
+            if (callback)
+                callback();
+            return;
+        }
+
         this._updated = false;
         this._readings = [];
 
@@ -76,6 +87,7 @@ export default class WattdUtil {
             this._available = false;
             this._readings = [];
         } finally {
+            this._lastUpdateUsec = nowUsec;
             this._updated = true;
             if (callback)
                 callback();
@@ -88,6 +100,13 @@ export default class WattdUtil {
 
     destroy() {
         this._readings = [];
+        this._lastUpdateUsec = 0;
+    }
+
+    set interval(seconds) {
+        const clamped = Math.max(1, seconds | 0);
+        this._intervalUsec = clamped * 1000000;
+        this._lastUpdateUsec = 0;
     }
 
     _formatLabel(name) {

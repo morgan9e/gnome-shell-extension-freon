@@ -111,6 +111,12 @@
       <description>Read power sensors exposed by wattd</description>
     </key>
 
+    <key type="i" name="wattd-update-time">
+      <default>5</default>
+      <summary>Seconds before wattd update</summary>
+      <description>Seconds between wattd power refreshes</description>
+    </key>
+
     <key type="b" name="use-gpu-nvidia">
       <default>false</default>
       <summary>Read GPU sensors from NVIDIA driver</summary>
