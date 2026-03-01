@@ -110,6 +110,26 @@ export default class FreonPreferences extends ExtensionPreferences {
             width_request: 320,
         });
 
+        const cpuUsageSwitch = this._addSwitch("CPU Usage", "use-cpu-usage", "Read CPU usage from /proc/stat");
+        group.add(cpuUsageSwitch);
+
+        const cpuUsageInterval = new Adw.SpinRow({
+            title: _('CPU Usage Polling Interval'),
+            subtitle: _('Seconds between CPU usage updates'),
+            adjustment: new Gtk.Adjustment({
+                lower: 1,
+                upper: 60,
+                value: this._settings.get_int('cpu-usage-update-time'),
+                step_increment: 1,
+            }),
+        });
+        this._settings.bind('cpu-usage-update-time', cpuUsageInterval, 'value', Gio.SettingsBindFlags.DEFAULT);
+        cpuUsageInterval.sensitive = this._settings.get_boolean('use-cpu-usage');
+        this._settings.connect('changed::use-cpu-usage', () => {
+            cpuUsageInterval.sensitive = this._settings.get_boolean('use-cpu-usage');
+        });
+        group.add(cpuUsageInterval);
+
         group.add(this._addSwitch("lm-sensors", "use-generic-lmsensors", "Read sensors from lm-sensors"));
         group.add(this._addSwitch("liquidctl", "use-generic-liquidctl", "Read sensors from liquidctl (v1.7.0+)"));
         const wattdSwitch = this._addSwitch("wattd", "use-generic-wattd", "Read power data from wattd");
@@ -180,6 +200,7 @@ export default class FreonPreferences extends ExtensionPreferences {
         group.add(this._addSwitch("Voltage", "show-voltage"));
         group.add(this._addSwitch("Power", "show-power"));
         group.add(this._addSwitch("Battery", "show-battery-stats"));
+        group.add(this._addSwitch("CPU Usage", "show-cpu-usage"));
         return group
     }
 

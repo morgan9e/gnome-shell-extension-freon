@@ -25,6 +25,7 @@ import SmartctlUtil from './smartctlUtil.js';
 import NvmecliUtil from './nvmecliUtil.js';
 import BatteryUtil from './batteryUtil.js';
 import WattdUtil from './wattdUtil.js';
+import CpuUsageUtil from './cpuUsageUtil.js';
 
 import FreonItem from './freonItem.js';
 
@@ -80,6 +81,7 @@ class FreonMenuButton extends PanelMenu.Button {
         this._initLiquidctlUtility();
         this._initBatteryUtility();
         this._initWattdUtility();
+        this._initCpuUsageUtility();
 
         this._initNvidiaUtility();
         this._initBumblebeeNvidiaUtility();
@@ -104,6 +106,7 @@ class FreonMenuButton extends PanelMenu.Button {
             'fan' : Gio.icon_new_for_string(path + '/icons/freon-fan-symbolic.svg'),
             'power' : voltageIcon,
             'battery' : batteryIcon,
+            'cpu-usage' : Gio.icon_new_for_string('utilities-system-monitor-symbolic'),
         }
 
         this._menuLayout = new St.BoxLayout();
@@ -145,6 +148,8 @@ class FreonMenuButton extends PanelMenu.Button {
         this._addSettingChangedSignal('use-generic-lmsensors', this._sensorsUtilityChanged.bind(this));
         this._addSettingChangedSignal('freeimpi-selected', this._freeipmiUtilityChanged.bind(this));
         this._addSettingChangedSignal('use-generic-liquidctl', this._liquidctlUtilityChanged.bind(this));
+        this._addSettingChangedSignal('use-cpu-usage', this._cpuUsageUtilityChanged.bind(this));
+        this._addSettingChangedSignal('cpu-usage-update-time', this._cpuUsageUpdateTimeChanged.bind(this));
         this._addSettingChangedSignal('use-generic-wattd', this._wattdUtilityChanged.bind(this));
         this._addSettingChangedSignal('show-battery-stats', this._batteryUtilityChanged.bind(this));
 
@@ -161,7 +166,8 @@ class FreonMenuButton extends PanelMenu.Button {
         this._addSettingChangedSignal('show-rotationrate', this._rerender.bind(this));
         this._addSettingChangedSignal('show-voltage', this._rerender.bind(this));
         this._addSettingChangedSignal('show-power', this._rerender.bind(this));
-        
+        this._addSettingChangedSignal('show-cpu-usage', this._rerender.bind(this));
+
 
         this._addSettingChangedSignal('group-temperature', this._rerender.bind(this))
         this._addSettingChangedSignal('group-rotationrate', this._rerender.bind(this))
@@ -392,6 +398,31 @@ class FreonMenuButton extends PanelMenu.Button {
         this._querySensors();
     }
 
+    _initCpuUsageUtility() {
+        if (this._settings.get_boolean('use-cpu-usage'))
+            this._utils.cpuUsage = new CpuUsageUtil(this._settings.get_int('cpu-usage-update-time'));
+    }
+
+    _destroyCpuUsageUtility() {
+        if (this._utils.cpuUsage) {
+            this._utils.cpuUsage.destroy();
+            delete this._utils.cpuUsage;
+        }
+    }
+
+    _cpuUsageUtilityChanged() {
+        this._destroyCpuUsageUtility();
+        this._initCpuUsageUtility();
+        this._querySensors();
+        this._updateUI(true);
+    }
+
+    _cpuUsageUpdateTimeChanged() {
+        if (this._utils.cpuUsage)
+            this._utils.cpuUsage.interval = this._settings.get_int('cpu-usage-update-time');
+        this._querySensors();
+    }
+
     _initNvidiaUtility() {
         if (this._settings.get_boolean('use-gpu-nvidia'))
             this._utils.nvidia = new NvidiaUtil();
@@ -560,6 +591,7 @@ class FreonMenuButton extends PanelMenu.Button {
 
         this._destroyBatteryUtility();
         this._destroyWattdUtility();
+        this._destroyCpuUsageUtility();
 
         GLib.Source.remove(this._timeoutId);
         GLib.Source.remove(this._updateUITimeoutId);
@@ -628,6 +660,7 @@ class FreonMenuButton extends PanelMenu.Button {
         let fanInfo = [];
         let voltageInfo = [];
         let powerInfo = [];
+        let cpuUsageInfo = [];
 
         if (this._utils.sensors && this._utils.sensors.available) {
             if (this._settings.get_boolean('show-temperature')) {
@@ -674,6 +707,10 @@ class FreonMenuButton extends PanelMenu.Button {
             if (this._settings.get_boolean('show-power'))
                 powerInfo = powerInfo.concat(this._utils.wattd.power);
 
+        if (this._utils.cpuUsage && this._utils.cpuUsage.available)
+            if (this._settings.get_boolean('show-cpu-usage'))
+                cpuUsageInfo = cpuUsageInfo.concat(this._utils.cpuUsage.usage);
+
         if (this._utils.nvidia && this._utils.nvidia.available)
             if (this._settings.get_boolean('show-temperature'))
                 gpuTempInfo = gpuTempInfo.concat(this._utils.nvidia.temp);
@@ -708,12 +745,14 @@ class FreonMenuButton extends PanelMenu.Button {
         fanInfo.sort(comparator);
         voltageInfo.sort(comparator);
         powerInfo.sort(comparator);
+        cpuUsageInfo.sort(comparator);
 
         let tempInfo = gpuTempInfo.concat(sensorsTempInfo).concat(driveTempInfo);
 
         if (tempInfo.length == 0
             && fanInfo.length == 0
-            && voltageInfo.length == 0) {
+            && voltageInfo.length == 0
+            && cpuUsageInfo.length == 0) {
             this._sensorMenuItems = {};
             this.menu.removeAll();
 
@@ -845,6 +884,18 @@ class FreonMenuButton extends PanelMenu.Button {
                     type: 'power',
                     label: power.label,
                     value: _("%.2f%s").format(power.power, unit)
+                });
+            }
+
+            if (cpuUsageInfo.length > 0 && (fanInfo.length > 0 || voltageInfo.length > 0 || powerInfo.length > 0))
+                sensors.push({type : 'separator'});
+
+            for (let cpu of cpuUsageInfo){
+                sensors.push({
+                    icon: 'cpu-usage',
+                    type: 'cpu-usage',
+                    label: cpu.label,
+                    value: _("%.1f%%").format(cpu.usage)
                 });
             }
 
