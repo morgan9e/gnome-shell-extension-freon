@@ -46,23 +46,19 @@ export default class CpuUsageUtil {
 
             this._readings = [];
 
-            for (const [cpu, fields] of snapshot) {
-                const prev = this._prevSnapshot.get(cpu);
-                if (!prev)
-                    continue;
-
+            const fields = snapshot.get('cpu');
+            const prev = this._prevSnapshot.get('cpu');
+            if (fields && prev) {
                 const idle = (fields.idle + fields.iowait) - (prev.idle + prev.iowait);
                 const total = fields.total - prev.total;
 
-                if (total <= 0)
-                    continue;
-
-                const usage = 100.0 * (1.0 - idle / total);
-
-                this._readings.push({
-                    label: cpu === 'cpu' ? 'CPU Total' : cpu.toUpperCase().replace('CPU', 'CPU '),
-                    usage: Math.max(0, Math.min(100, usage)),
-                });
+                if (total > 0) {
+                    const usage = 100.0 * (1.0 - idle / total);
+                    this._readings.push({
+                        label: 'CPU Usage',
+                        usage: Math.max(0, Math.min(100, usage)),
+                    });
+                }
             }
 
             this._prevSnapshot = snapshot;
